@@ -68,7 +68,128 @@ No hands-on work, just going over slides
 
 ## Module 4 - Slides: Optimal GitHub settings
 
+No hands-on work, just going over slides
+
 ## Module 5 - Hands On: Merge PR and Required Rule set
 
 1. Merge the PR from Module 3
 1. Setup a required rule set
+1. Ruleset name: Main
+1. Add Target: Include Default Branch
+1. Check Restrict Deletions
+1. Check Require Pull Request Before Merging
+   1. Allow only Squash Merges (🌶️)
+1. Check Require Status Checks to Merge
+   1. Click Require Branches to be up to date
+   1. Click Add Checks
+   1. Search for PR Verify and check it
+1. Check Block Force Pushes
+1. Save Changes
+
+## Module 6 - Hands On: Create a CI Workflow
+
+1. Based on the PR Verify workflow, create one for the CI workflow (running after merge) called `ci.yml`. Make sure that `dotnet build` and `dotnet test` run as part of that.
+   1. Hint: you want the `push` trigger not `pull_request`
+1. Pssstttt... do we need to do that if we require branches to be up to date? Let's talk about it
+
+## Module 7 - Slides: Reusable Workflows
+
+No hands-on work, just going over slides
+
+## Module 8 - Hands On: Reusable Workflows
+
+1. Let's create a reusable workflow for PR Verify and CI to reduce duplication
+1. Note: I don't normally do this for PR + CI, but will do it for deploys (see [here](https://github.com/scottsauber/workshop-dotnet-azure-github-bicep?tab=readme-ov-file#module-6---github-actions-hands-on) for more details).
+1. Create a file called `reusable-build.yml`
+1. Add the following to it:
+
+   ```yml
+   name: Reusable - Build
+
+   on:
+     workflow_call:
+       inputs:
+         dotnet_version:
+           required: true
+           type: string
+
+   jobs:
+     build:
+       name: Reusable - Build
+       runs-on: ubuntu-22.04
+
+       steps:
+         - uses: actions/checkout@v4
+
+         - name: Set up .NET Core
+           uses: actions/setup-dotnet@v4
+           with:
+             dotnet-version: ${{ inputs.dotnet_version }}
+
+         - name: Build with dotnet
+           run: dotnet build --configuration Release
+
+         - name: Test
+           run: dotnet test --configuration Release --no-build
+   ```
+
+1. In your pr-verify.yml, change the YAML to this:
+
+   ```yml
+   name: PR Verify
+
+   on:
+     pull_request:
+       branches: ["main"]
+     workflow_dispatch:
+
+   jobs:
+     build:
+       name: PR Verify
+       uses: ./.github/workflows/reusable-build.yml
+       with:
+         dotnet_version: 9.0.x
+   ```
+
+1. Make a similar change for `ci.yml`
+1. Congratulations - now we have shared code between CI and PR
+1. But what if we wanted this in a reusable repo...? 🤔
+
+## Module 9 - Slides: Reusable Workflows in another repository
+
+No hands-on work, just going over slides
+
+## Module 10 - Hands On: Reusable Workflows in another repository
+
+1. Make a new repository
+1. Create a `.github/workflows/reusable-build.yml` file and copy it over
+1. Change your `pr-verify` and `ci.yml` to point at the new repository instead of your local one
+
+## Module 11 - Slides: Secrets
+
+No hands-on work, just going over slides
+
+## Module 12 - Hands On: Secrets
+
+1. Create a `secrets-test.yml` file with the following YAML
+
+   ```yml
+   name: Run every 5 minutes
+   on:
+     pull_request:
+       branches: ["main"]
+
+   jobs:
+     echo:
+       name: Echo
+       runs-on: ubuntu-latest
+       steps:
+         - name: Hello world
+           run: echo ${{ secrets.SOME_SECRET }}
+   ```
+
+1. Go to the repository's Settings tab
+1. Click on Secrets and Variables => Secrets
+1. Click "New Repository Secret"
+1. Give the name of SOME_SECRET and then a random value
+1. Commit and push the workflow above and watch how it masks the value
